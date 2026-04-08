@@ -48,13 +48,78 @@
     </div>
 
     <!-- REGISTER -->
-    <div class="tab-pane fade {% if tab == 'register' %}show active{% endif %}" id="register">
-      <form method="POST" action="{% url 'register' %}">
-        {% csrf_token %}
-        {{ register_form.as_p }}
-        <button type="submit" class="btn btn-dark w-100 mt-2">Create Account</button>
-      </form>
+<div class="tab-pane fade {% if tab == 'register' %}show active{% endif %}" id="register">
+  <form method="POST" action="{% url 'register' %}">
+    {% csrf_token %}
+
+    <div class="mb-3">
+      <label class="form-label">Username</label>
+      <input type="text" name="username" class="form-control"
+             value="{{ register_form.username.value|default:'' }}" required/>
+      {% if register_form.username.errors %}
+        <div class="text-danger small mt-1">{{ register_form.username.errors }}</div>
+      {% endif %}
     </div>
+
+    <div class="mb-3">
+      <label class="form-label">Email</label>
+      <input type="email" name="email" class="form-control"
+             value="{{ register_form.email.value|default:'' }}" required/>
+      {% if register_form.email.errors %}
+        <div class="text-danger small mt-1">{{ register_form.email.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="row mb-3">
+      <div class="col">
+        <label class="form-label">Department</label>
+        <select name="department" class="form-select">
+          <option value="">Select</option>
+          <option value="civil">Civil</option>
+          <option value="ec">EC</option>
+          <option value="eee">EEE</option>
+          <option value="cs">CS</option>
+        </select>
+      </div>
+      <div class="col">
+        <label class="form-label">Semester</label>
+        <select name="semester" class="form-select">
+          <option value="">Select</option>
+          <option value="1">Sem 1</option>
+          <option value="2">Sem 2</option>
+          <option value="3">Sem 3</option>
+          <option value="4">Sem 4</option>
+          <option value="5">Sem 5</option>
+          <option value="6">Sem 6</option>
+          <option value="7">Sem 7</option>
+          <option value="8">Sem 8</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Password</label>
+      <input type="password" name="password1" class="form-control" required/>
+      {% if register_form.password1.errors %}
+        <div class="text-danger small mt-1">{{ register_form.password1.errors }}</div>
+      {% endif %}
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Confirm Password</label>
+      <input type="password" name="password2" class="form-control" required/>
+      {% if register_form.password2.errors %}
+        <div class="text-danger small mt-1">{{ register_form.password2.errors }}</div>
+      {% endif %}
+    </div>
+
+    {% if register_form.non_field_errors %}
+      <div class="alert alert-danger small">{{ register_form.non_field_errors }}</div>
+    {% endif %}
+
+    <button type="submit" class="btn btn-dark w-100 mt-2">Create Account</button>
+  </form>
+</div>
 
   </div>
 </div>

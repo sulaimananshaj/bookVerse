@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>Admin Dashboard – BookVerse</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark px-4">
+  <span class="navbar-brand fw-bold">📚 BookVerse — Admin</span>
+  <a href="{% url 'logout' %}" class="btn btn-outline-light btn-sm">Logout</a>
+</nav>
+<div class="container mt-4">
+
+  {% if messages %}
+    {% for msg in messages %}
+      <div class="alert alert-success">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <!-- PENDING APPROVALS -->
+  <h5 class="mb-3">⏳ Pending Approvals ({{ pending_books.count }})</h5>
+  {% if pending_books %}
+    <div class="row g-3 mb-5">
+      {% for book in pending_books %}
+        <div class="col-md-4">
+          <div class="card h-100 border-warning">
+            {% if book.image %}
+              <img src="{{ book.image.url }}" class="card-img-top" style="height:160px; object-fit:cover;"/>
+            {% endif %}
+            <div class="card-body">
+              <h6 class="fw-bold">{{ book.title }}</h6>
+              <p class="small text-muted mb-1">{{ book.description|truncatewords:10 }}</p>
+              <p class="small mb-1">Price: <strong>₹{{ book.min_price }} – ₹{{ book.max_price }}</strong></p>
+              <p class="small mb-1">Timer: <strong>{{ book.get_timer_duration_display }}</strong></p>
+              <p class="small text-muted mb-3">By: {{ book.uploaded_by.username }}</p>
+              <!-- APPROVE -->
+              <form method="POST" action="{% url 'approve_book' book.id %}" class="d-inline">
+                {% csrf_token %}
+                <button class="btn btn-success btn-sm">✓ Approve</button>
+              </form>
+              <!-- REJECT -->
+              <button class="btn btn-danger btn-sm" data-bs-toggle="collapse"
+                      data-bs-target="#reject-{{ book.id }}">✗ Reject</button>
+              <div class="collapse mt-2" id="reject-{{ book.id }}">
+                <form method="POST" action="{% url 'reject_book' book.id %}">
+                  {% csrf_token %}
+                  <textarea name="reason" class="form-control form-control-sm mb-2"
+                            rows="2" placeholder="Reason for rejection..."></textarea>
+                  <button class="btn btn-danger btn-sm w-100">Send Rejection</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p class="text-muted mb-5">No books pending approval.</p>
+  {% endif %}
+
+  <!-- APPROVED / LIVE BOOKS -->
+  <h5 class="mb-3">✅ Live Books ({{ approved_books.count }})</h5>
+  {% if approved_books %}
+    <table class="table table-bordered table-sm bg-white">
+      <thead class="table-dark">
+        <tr>
+          <th>Title</th><th>Uploaded by</th>
+          <th>Price range</th><th>Ends</th><th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for book in approved_books %}
+          <tr>
+            <td>{{ book.title }}</td>
+            <td>{{ book.uploaded_by.username }}</td>
+            <td>₹{{ book.min_price }} – ₹{{ book.max_price }}</td>
+            <td>{{ book.bid_end_time|date:"d M Y" }}</td>
+            <td><span class="badge bg-success">Live</span></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="text-muted">No approved books yet.</p>
+  {% endif %}
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
