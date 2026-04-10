@@ -7,6 +7,7 @@ from django.core.mail import send_mail
 from django.conf import settings
 from .models import Book
 from .forms import BookUploadForm
+from .models import Book, Bid, BID_INCREMENT
 
 
 #create views here
@@ -38,11 +39,10 @@ def login_view(request):
         email    = form.cleaned_data['email']
         password = form.cleaned_data['password']
         try:
-            username = CustomUser.objects.get(email=email).username
-            user = authenticate(request, username=username, password=password)
+            user_obj = CustomUser.objects.get(email=email)
+            user = authenticate(request, username=user_obj.username, password=password)
             if user:
                 login(request, user)
-                # ── redirect admin to admin dashboard ──
                 if user.is_staff:
                     return redirect('admin_dashboard')
                 return redirect('dashboard')
@@ -50,6 +50,8 @@ def login_view(request):
                 messages.error(request, 'Invalid password.')
         except CustomUser.DoesNotExist:
             messages.error(request, 'No account found with this email.')
+        except CustomUser.MultipleObjectsReturned:
+            messages.error(request, 'Multiple accounts found with this email. Please contact admin.')
     return render(request, 'main/home.html', {
         'login_form': form,
         'tab': 'login'
@@ -157,3 +159,80 @@ def reject_book(request, book_id):
         )
         messages.success(request, f'"{book.title}" rejected and uploader notified.')
     return redirect('admin_dashboard')
+# ── BOOK DETAIL + BID FORM ──
+def book_detail(request, book_id):
+    if not request.user.is_authenticated:
+        return redirect('home')
+
+    book = Book.objects.get(id=book_id)
+
+    # close auction if expired or max price reached
+    if not book.is_sold:
+        if book.is_expired() or book.current_price() >= book.max_price:
+            book.close_auction()
+            messages.info(request, 'This auction has ended.')
+
+    bids = book.bids.all()
+    return render(request, 'main/book_detail.html', {
+        'book':          book,
+        'bids':          bids,
+        'bid_increment': BID_INCREMENT,
+        'next_bid':      book.current_price() + BID_INCREMENT,
+    })
+
+# ── PLACE BID ──
+def place_bid(request, book_id):
+    if not request.user.is_authenticated:
+        return redirect('home')
+
+    book = Book.objects.get(id=book_id)
+
+    # block uploader from bidding on own book
+    if book.uploaded_by == request.user:
+        messages.error(request, 'You cannot bid on your own book.')
+        return redirect('book_detail', book_id=book_id)
+
+    # block if auction closed
+    if book.is_sold or book.is_expired():
+        messages.error(request, 'This auction has already ended.')
+        return redirect('book_detail', book_id=book_id)
+
+    if request.method == 'POST':
+        try:
+            amount = round(float(request.POST.get('amount', 0)))
+        except ValueError:
+            messages.error(request, 'Invalid bid amount.')
+            return redirect('book_detail', book_id=book_id)
+
+        expected = round(float(book.current_price())) + BID_INCREMENT
+
+        # validate increment
+        if amount != expected:
+            messages.error(request, f'Your bid must be exactly ₹{expected}.')
+            return redirect('book_detail', book_id=book_id)
+
+        # validate max price
+        if amount > book.max_price:
+            messages.error(request, f'Bid cannot exceed the max price ₹{book.max_price}.')
+            return redirect('book_detail', book_id=book_id)
+
+        Bid.objects.create(book=book, bidder=request.user, amount=amount)
+        messages.success(request, f'Bid of ₹{amount} placed successfully!')
+
+        # check if max price reached — close auction
+        if amount >= book.max_price:
+            book.close_auction()
+            messages.info(request, 'Max price reached! Auction is now closed.')
+
+    return redirect('book_detail', book_id=book_id)
+
+# ── AJAX — live bid data for admin & book list ──
+def live_bid_data(request, book_id):
+    from django.http import JsonResponse
+    book = Book.objects.get(id=book_id)
+    return JsonResponse({
+        'current_price': str(book.current_price()),
+        'bid_count':     book.bids.count(),
+        'is_sold':       book.is_sold,
+        'is_expired':    book.is_expired(),
+    })
