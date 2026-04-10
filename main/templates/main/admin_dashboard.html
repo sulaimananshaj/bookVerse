@@ -81,6 +81,69 @@
         {% endfor %}
       </tbody>
     </table>
+    <!-- LIVE BIDDING MONITOR -->
+<h5 class="mb-3 mt-4">📊 Live Bidding Monitor</h5>
+{% if approved_books %}
+  <div class="row g-3">
+    {% for book in approved_books %}
+      {% if not book.is_sold %}
+        <div class="col-md-4">
+          <div class="card border-success">
+            <div class="card-body">
+              <h6 class="fw-bold">{{ book.title }}</h6>
+              <p class="mb-1 small">
+                Current price:
+                <strong id="price-{{ book.id }}">
+                  ₹{{ book.current_price }}
+                </strong>
+              </p>
+              <p class="mb-1 small">
+                Bids placed:
+                <strong id="bids-{{ book.id }}">
+                  {{ book.bids.count }}
+                </strong>
+              </p>
+              <p class="mb-1 small">
+                Ends: {{ book.bid_end_time|date:"d M Y, h:i A" }}
+              </p>
+              <p class="mb-0 small text-muted" id="status-{{ book.id }}">
+                🟢 Active
+              </p>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
+<script>
+  // auto-refresh live bidding data every 10 seconds
+  const bookIds = [
+    {% for book in approved_books %}
+      {% if not book.is_sold %}{{ book.id }},{% endif %}
+    {% endfor %}
+  ];
+
+  function refreshLiveData() {
+    bookIds.forEach(id => {
+      fetch(`/books/${id}/live/`)
+        .then(r => r.json())
+        .then(data => {
+          const priceEl  = document.getElementById(`price-${id}`);
+          const bidsEl   = document.getElementById(`bids-${id}`);
+          const statusEl = document.getElementById(`status-${id}`);
+          if (priceEl)  priceEl.textContent  = '₹' + data.current_price;
+          if (bidsEl)   bidsEl.textContent   = data.bid_count;
+          if (statusEl) statusEl.textContent =
+            data.is_sold || data.is_expired ? '🔴 Ended' : '🟢 Active';
+        });
+    });
+  }
+
+  setInterval(refreshLiveData, 10000);
+</script>
+
   {% else %}
     <p class="text-muted">No approved books yet.</p>
   {% endif %}
